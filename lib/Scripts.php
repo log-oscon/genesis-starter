@@ -23,7 +23,7 @@ class Scripts {
 		$this->base_uri = \get_stylesheet_directory_uri() . '/public/';
 
 		$this->cached_styles = array(
-			'fonts' => \get_stylesheet_directory_uri() . '/fonts.css?version=' . CHILD_THEME_VERSION,
+			'fonts' => $this->base_uri . 'fonts.css?version=' . CHILD_THEME_VERSION,
 		);
 	}
 
@@ -32,9 +32,8 @@ class Scripts {
 	 */
 	public function ready() {
 		\add_action( 'wp_enqueue_scripts', array( $this, 'enqueue' ) );
-		\add_action( 'wp_default_scripts', array( $this, 'default_scripts' ) );
-		\add_action( 'wp_head', array( $this, 'inline' ) );
-		\add_filter( 'script_loader_tag', array( $this, 'async' ), 10, 3 );
+		\add_action( 'wp_head', array( $this, 'style_loader_fallback' ) );
+		\add_filter( 'script_loader_tag', array( $this, 'script_loader_async' ), 10, 3 );
 	}
 
 	/**
@@ -43,8 +42,6 @@ class Scripts {
 	 * Fired on `wp_enqueue_scripts`.
 	 */
 	public function enqueue() {
-		\wp_enqueue_script( 'jquery-core' );
-
 		\wp_enqueue_script( 'genesis-starter-head',
 			$this->base_uri . 'head.js',
 			array(),
@@ -59,35 +56,27 @@ class Scripts {
 			$this->base_uri . 'app.js',
 			array( 'genesis-starter-infrastructure' ),
 			CHILD_THEME_VERSION, true );
+
+		\wp_localize_script( 'genesis-starter-app', 'genesisStarter', array(
+			'cachedStyles' => $this->cached_styles,
+			'menu'         => \__( 'Menu', 'genesis-starter' ),
+		) );
+
+		\wp_add_inline_script( 'genesis-starter-app',
+			file_get_contents( dirname( __DIR__ ) . '/public/inline.js' ) );
 	}
 
 	/**
-	 * Adjust the default script dependency tree.
-	 *
-	 * @param array $scripts WordPress scripts container.
+	 * Include asynchronously loaded assets behind a <noscript> tag as a fallback.
 	 */
-	public function default_scripts( &$scripts ) {
-		if ( \is_admin() || \is_admin_bar_showing() ) {
-			return $scripts;
+	public function style_loader_fallback() {
+		echo '<noscript>';
+
+		foreach ( $this->cached_styles as $href ) {
+			printf( '<link rel="stylesheet" type="text/css" media="all" href="%s">', \esc_url( $href ) );
 		}
 
-		// Load jQuery in the footer:
-		$scripts->add_data( 'jquery', 'group', 1 );
-		$scripts->add_data( 'jquery-core', 'group', 1 );
-	}
-
-	/**
-	 * Include deferred font loading script in the header.
-	 */
-	public function inline() {
-		?>
-		<!--noptimize-->
-		<script type="text/javascript">
-			var cachedStyles = <?php echo json_encode( $this->cached_styles ); ?>;
-			<?php include dirname( __DIR__ ) . '/public/inline.js'; ?>
-		</script>
-		<!--/noptimize-->
-		<?php
+		echo '</noscript>';
 	}
 
 	/**
@@ -99,7 +88,7 @@ class Scripts {
 	 *
 	 * @return string      Filteredd script HTML tag.
 	 */
-	public function async( $tag, $handle, $src ) {
+	public function script_loader_async( $tag, $handle, $src ) {
 
 		if ( \is_admin() ) {
 			return $tag;

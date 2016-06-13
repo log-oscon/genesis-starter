@@ -14,7 +14,7 @@ export default {
     debug
   },
   sass: {
-    src: src + '/styles/*.{sass,scss}',
+    src: src + '/styles/**/*.{sass,scss}',
     dest: './',
     settings: {
       sourceComments: debug ? 'map' : null,
@@ -28,20 +28,27 @@ export default {
   autoprefixer: {
     browsers: ['last 2 versions']
   },
+  fonts: {
+    src: src + '/fonts/**/*.{ttf,woff,woff2}',
+    out: 'fonts.css',
+    dest,
+  },
   images: {
     src: src + '/images/**',
     dest: dest + '/images',
     settings: {
-      svgoPlugins: [
-        {
-          cleanupIDs: false
-        },
-        {
-          removeUnknownsAndDefaults: {
-            SVGid: false
+      svgo: {
+        plugins: [
+          {
+            cleanupIDs: false
+          },
+          {
+            removeUnknownsAndDefaults: {
+              SVGid: false
+            }
           }
-        }
-      ]
+        ]
+      }
     }
   },
   svgSprite: {
@@ -65,9 +72,8 @@ export default {
     watch: '/**/*.php',
     src: test + '/phpunit/**/*.test.php'
   },
-  tape: {
-    watch: '**/*.{js,jsx}',
-    src: test + '/tape/**/*.js'
+  ava: {
+    src: test + '/ava/**/*.js'
   },
   browserSync: {
     proxy: host,

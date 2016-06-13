@@ -1,27 +1,40 @@
 import gulp from 'gulp';
+import autoprefixer from 'autoprefixer';
 import browserSync from 'browser-sync';
 import gulpIf from 'gulp-if';
-import minifyCss from 'gulp-minify-css';
+import nano from 'cssnano';
+import pixrem from 'pixrem';
 import plumber from 'gulp-plumber';
+import postcss from 'gulp-postcss';
+import postcssScss from 'postcss-scss';
+import reporter from 'postcss-reporter';
 import sass from 'gulp-sass';
-import scssLint from 'gulp-scss-lint';
 import sourcemaps from 'gulp-sourcemaps';
-import autoprefixer from 'gulp-autoprefixer';
-import handleErrors from '../util/handle-errors';
+import stylelint from 'stylelint';
 import config from '../config';
+
+const preprocessors = [
+  stylelint(),
+  reporter({
+    clearMessages: true,
+    throwError:    false,
+  }),
+];
+
+const postprocessors = [
+  pixrem(),
+  autoprefixer(config.autoprefixer),
+  nano(),
+];
 
 gulp.task('sass', ['images'], () =>
   gulp.src(config.sass.src)
     .pipe(plumber())
-    .pipe(gulpIf(config.debug, sourcemaps.init()))
-    .pipe(scssLint())
+    .pipe(gulpIf(config.environment.debug, sourcemaps.init()))
+    .pipe(postcss(preprocessors, {syntax: postcssScss}))
     .pipe(sass(config.sass.settings))
-    .on('error', handleErrors)
-    .pipe(autoprefixer(config.autoprefixer))
-    .pipe(minifyCss({
-      keepSpecialComments: '*'
-    }))
-    .pipe(gulpIf(config.debug, sourcemaps.write()))
+    .pipe(postcss(postprocessors))
+    .pipe(gulpIf(config.environment.debug, sourcemaps.write()))
     .pipe(gulp.dest(config.sass.dest))
     .pipe(browserSync.reload({
       stream: true
